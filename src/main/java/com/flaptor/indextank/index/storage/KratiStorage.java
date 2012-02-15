@@ -7,8 +7,10 @@ import java.util.Map;
 
 import com.flaptor.indextank.index.Document;
 import com.flaptor.indextank.storage.alternatives.DocumentStorage;
+import com.flaptor.indextank.storage.alternatives.DocumentStorageFactory;
 
 import com.google.common.collect.Maps;
+import com.google.common.base.Preconditions;
 
 import krati.core.StoreConfig;
 import krati.core.StoreFactory;
@@ -64,5 +66,25 @@ public class KratiStorage extends DocumentBinaryStorage {
   public Map<String, String> getStats() {
     return Maps.newHashMap();
   }
+
+
+  public class Factory implements DocumentStorageFactory {
+
+    public static final String DIR = "dir";
+
+    @Override 
+    public DocumentStorage fromConfiguration(Map<?, ?> config) {
+      Preconditions.checkNotNull(config);
+      Preconditions.checkNotNull(config.get(DIR), "config needs '" + DIR + "' value");
+
+      File backupDir = new File(config.get(DIR).toString());
+
+      try { 
+        return new KratiStorage(backupDir);
+      } catch (Exception e) {
+        throw new RuntimeException("while creating a KratiStorage: " + e.getMessage(), e);
+      }
+    }
+  } 
 
 }
