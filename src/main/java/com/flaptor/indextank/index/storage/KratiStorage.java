@@ -68,7 +68,7 @@ public class KratiStorage extends DocumentBinaryStorage {
   }
 
 
-  public class Factory implements DocumentStorageFactory {
+  public static class Factory implements DocumentStorageFactory {
 
     public static final String DIR = "dir";
 
