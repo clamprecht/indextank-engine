@@ -113,6 +113,7 @@ public class IndexEngine {
     private static final int DEFAULT_BASE_PORT = 7910;
     private static final int DEFAULT_RTI_SIZE = 1000;
     private static final int DEFAULT_BDB_CACHE = 100;
+    private static final int DEFAULT_MAX_SEARCH_QUEUE_LENGTH = 100;
 
     public static enum SuggestValues { NO, QUERIES, DOCUMENTS};
     public static enum StorageValues { NO, BDB, RAM, CASSANDRA };
@@ -494,6 +495,12 @@ public class IndexEngine {
                                         .withDescription("if present, specifies the size of the berkeleyDb cache per thread, in megabytes. Defaults to 100MB.")
                                         .create("bc");
 
+        Option maxSearchQueue = OptionBuilder.withArgName("max-search-queue")
+                .hasArg()
+                .withDescription("Max length of searchers waiting to acquire semaphore")
+                .withLongOpt("max-search-queue")
+                .create("msq");
+
         Options options = new Options();
         options.addOption(baseDir);
         options.addOption(basePort);
@@ -513,6 +520,7 @@ public class IndexEngine {
         options.addOption(configFile);
         options.addOption(storage);
         options.addOption(bdbCache);
+        options.addOption(maxSearchQueue);
 
         return options;
     }
@@ -663,7 +671,14 @@ public class IndexEngine {
                 searcher = new DidYouMeanSearcher(searcher, dym);
             }
 
-            searcher = new TrafficLimitingSearcher(searcher);
+            int maxSearchQueueLength = DEFAULT_MAX_SEARCH_QUEUE_LENGTH;
+            if (line.hasOption("max-search-queue")) {
+                String opt = line.getOptionValue("max-search-queue", String.valueOf(DEFAULT_MAX_SEARCH_QUEUE_LENGTH));
+                maxSearchQueueLength = Integer.parseInt(opt);
+                logger.info("Using max-search-queue length " + maxSearchQueueLength);
+            }
+
+            searcher = new TrafficLimitingSearcher(searcher, maxSearchQueueLength);
             Runtime.getRuntime().addShutdownHook(new ShutdownThread(indexer));
 
             new SearcherServer(searcher, ie.getParser(), ie.boostsManager, ie.scorer, basePort + 2).start();
