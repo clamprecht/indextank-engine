@@ -51,7 +51,7 @@ public class TrafficLimitingSearcher extends AbstractDocumentSearcher {
         // call delegate searcher
         try {
             int queueLen = semaphore.getQueueLength();
-            if (queueLen >= maxSearchQueueLength) {
+            if (queueLen > maxSearchQueueLength) {
                 logger.warn("Too many waiting to search, queue length = " + queueLen + ", returning without searching");
                 throw new InterruptedException("Too many concurrent searches");
             }
