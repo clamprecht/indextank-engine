@@ -672,10 +672,9 @@ public class IndexEngine {
             }
 
             int maxSearchQueueLength = DEFAULT_MAX_SEARCH_QUEUE_LENGTH;
-            if (line.hasOption("max-search-queue")) {
-                String opt = line.getOptionValue("max-search-queue", String.valueOf(DEFAULT_MAX_SEARCH_QUEUE_LENGTH));
-                maxSearchQueueLength = Integer.parseInt(opt);
-                logger.info("Using max-search-queue length " + maxSearchQueueLength);
+            if (configuration.containsKey("max_search_queue")) {
+                maxSearchQueueLength = ((Long) configuration.get("max_search_queue")).intValue();
+                logger.info("Using max_search_queue length: " + maxSearchQueueLength);
             }
 
             searcher = new TrafficLimitingSearcher(searcher, maxSearchQueueLength);
