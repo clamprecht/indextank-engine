@@ -27,7 +27,7 @@ import com.google.common.base.Preconditions;
 
 
 public class TrafficLimitingSearcher extends AbstractDocumentSearcher {
-	private static final Logger logger = Logger.getLogger(Execute.whoAmI());
+    private static final Logger logger = Logger.getLogger(Execute.whoAmI());
     private static final int MAX_NUMBER_OF_PARALLEL_REQUESTS = 3;
     private static final int DEFAULT_MAX_SEARCH_QUEUE_LENGTH = Integer.MAX_VALUE;
     private final int maxSearchQueueLength;
@@ -40,7 +40,7 @@ public class TrafficLimitingSearcher extends AbstractDocumentSearcher {
 
     /**
      * @param searcher the delegate DocumentSearcher
-     * @param maxSearchQueueLength max allowed search queue length, or 0 for waiters allowed
+     * @param maxSearchQueueLength max allowed search queue length, or 0 for no waiters allowed
      */
     public TrafficLimitingSearcher(DocumentSearcher searcher, int maxSearchQueueLength) {
 		Preconditions.checkNotNull(searcher);
@@ -99,3 +99,4 @@ public class TrafficLimitingSearcher extends AbstractDocumentSearcher {
         }
     }
 }
+
