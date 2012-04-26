@@ -63,6 +63,7 @@ import com.flaptor.indextank.search.DocumentSearcher;
 import com.flaptor.indextank.search.SnippetSearcher;
 import com.flaptor.indextank.search.TrafficLimitingSearcher;
 import com.flaptor.indextank.storage.alternatives.DocumentStorage;
+import com.flaptor.indextank.storage.alternatives.DocumentStorageFactory;
 import com.flaptor.indextank.suggest.DidYouMeanSuggestor;
 import com.flaptor.indextank.suggest.NoSuggestor;
 import com.flaptor.indextank.suggest.QuerySuggestor;
@@ -123,9 +124,9 @@ public class IndexEngine {
                         int rtiSize, 
                         boolean load, 
                         int boostsSize, 
-                        SuggestValues suggest, 
+                        SuggestValues suggest,
                         StorageValues storageValue,
-                        int bdbCache, 
+                        int bdbCache,
                         String functions, 
                         boolean facets, 
                         String indexCode, 
@@ -136,9 +137,9 @@ public class IndexEngine {
     	        rtiSize, 
     	        load, 
     	        boostsSize, 
-    	        suggest, 
-    	        storageValue, 
-    	        bdbCache, 
+    	        suggest,
+    	        storageValue,
+    	        bdbCache,
     	        functions, 
     	        facets, 
     	        indexCode, 
@@ -152,9 +153,9 @@ public class IndexEngine {
                         int rtiSize, 
                         boolean load, 
                         int boostsSize, 
-                        SuggestValues suggest, 
-                        StorageValues storageValue, 
-                        int bdbCache, 
+                        SuggestValues suggest,
+                        StorageValues storageValue,
+                        int bdbCache,
                         String functions, 
                         boolean facets, 
                         String indexCode, 
@@ -277,18 +278,9 @@ public class IndexEngine {
             logger.info("Index recovery configuration set to recover index from simpleDB");
             this.recoveryStorage = IndexRecoverer.IndexStorageValue.SIMPLEDB;
         }
-        
-        switch (storageValue) {
-            case RAM:
-                storage = new InMemoryStorage(baseDir, load);
-                logger.info("Using in-memory storage");
-                break;
-            case NO:
-                storage = null;
-                logger.info("NOT Using storage");
-                break;
-        }
-
+       
+        storage = buildStorage(configuration); 
+ 
         promoter = new BasicPromoter(baseDir, load);
         searcher = new Blender(lsi, rti, suggestor, promoter, boostsManager);
         indexer = new Dealer(lsi, rti, suggestor, boostsManager, rtiSize, promoter, functionsManager);
@@ -326,6 +318,54 @@ public class IndexEngine {
 		}
 		return analyzer;
 	};
+
+    public DocumentStorage buildStorage(Map<?, ?> configuration) {
+
+        DocumentStorage storage = null;
+
+        // parse storage from configuration
+        String storageClassStr = (String) configuration.get("storage");
+        if (null == storageClassStr || "".equals(storageClassStr.trim()) ) {
+            logger.info("NOT Using storage");
+        } else {
+		        try {
+                // it is either a factory, or a concrete class
+                Class storageClass = Class.forName(storageClassStr);
+
+                if (DocumentStorageFactory.class.isAssignableFrom(storageClass)) {
+                // if it was a factory .. 
+                    logger.info("got a DocumentStorageFactory: " + storageClass);
+                    DocumentStorageFactory storageFactory = (DocumentStorageFactory) storageClass.newInstance();
+                    Map<?, ?> storageConfig = (Map<?, ?>)configuration.get("storage_config");
+                    if (null == storageConfig) { 
+                        logger.warn("no 'storage_config' entry on configuration .. will try an empty Map");
+                        storageConfig = Maps.newHashMap();
+                    }
+
+                    storage = storageFactory.fromConfiguration(storageConfig);
+                } else if (DocumentStorage.class.isAssignableFrom(storageClass)) {
+                // if it was a storage .. 
+                    logger.info("got a DocumentStorage: " + storageClass + ". Trying default Constructor.");
+                    storage = (DocumentStorage) storageClass.newInstance();
+                } else {
+                // if it was anything else .. complain
+                    logger.error("got a storage option that is NOT a DocumentStorageFactory nor a DocumentStorage. I don't know what to do with it!");
+                    throw new IllegalArgumentException("Configuration 'storage' class is not a DocumentStorageFactory nor a DocumentStorage.");
+                }
+		        } catch (ClassNotFoundException e) {
+        			throw new RuntimeException("DocumentStorage(Factory?) class not found", e);
+        		} catch (SecurityException e) {
+        			throw new RuntimeException("DocumentStorage(Factory?) class not instantiable", e);
+        		} catch (InstantiationException e) {
+        			throw new RuntimeException("DocumentStorage(Factory?) class threw an exception for the given configuration", e);
+		        } catch (IllegalAccessException e) {
+			        throw new RuntimeException("DocumentStorage(Factory?) class is not accessible", e);
+        		}
+        }
+
+
+        return storage;
+    }
 
 
     public BoostingIndexer getIndexer(){
@@ -487,7 +527,7 @@ public class IndexEngine {
         
         Option storage  = OptionBuilder.withLongOpt("storage")
                                         .hasArg()
-                                        .withDescription("if present, specifies a storage backend. Options are 'bdb' and 'ram'. Defaults to 'ram'.")
+                                        .withDescription("DEPRECATED! if present, specifies a storage backend. Only 'ram' is supported on command line. USE JSON CONFIGURATION!.")
                                         .create("st");
 
         Option bdbCache  = OptionBuilder.withLongOpt("bdb-cache")
@@ -572,6 +612,8 @@ public class IndexEngine {
                 System.exit(1);
             }
 
+            Map<Object, Object> configuration = Maps.newHashMap();
+
             File baseDir = new File(line.getOptionValue("dir"));
             int basePort = Integer.parseInt(line.getOptionValue("port", String.valueOf(DEFAULT_BASE_PORT)));
             int boostsSize = Integer.parseInt(line.getOptionValue("boosts", String.valueOf(1)));
@@ -591,12 +633,23 @@ public class IndexEngine {
             } else {
                 suggest = SuggestValues.NO;
             }
-            
+
             StorageValues storageValue = StorageValues.RAM;
             int bdbCache = 0;
             if (line.hasOption("storage")){
+                logger.warn("command-line option 'storage' is deprecated. write it on the JSON configuration!");
+                logger.warn("I'll try to do that for you this time .. ");
+
                 String storageType = line.getOptionValue("storage");
-                if ("bdb".equals(storageType)) {
+
+                if ("ram".equals(storageType)) {
+                    Map<String, String> storageConfig = Maps.newHashMap();
+                    storageConfig.put(InMemoryStorage.Factory.DIR, baseDir.getPath());
+                    storageConfig.put(InMemoryStorage.Factory.LOAD, "true");
+
+                    configuration.put("storage", InMemoryStorage.class.getName());
+                    configuration.put("storage_config", storageConfig);
+                } else if ("bdb".equals(storageType)) {
                     storageValue = StorageValues.BDB;
                     bdbCache = Integer.parseInt(line.getOptionValue("bdb-cache", String.valueOf(DEFAULT_BDB_CACHE)));
                 } else if ("cassandra".equals(storageType)) {
@@ -604,7 +657,7 @@ public class IndexEngine {
                 } else if ("ram".equals(storageType)) {
                     storageValue = StorageValues.RAM;
                 } else {
-                    throw new IllegalArgumentException("storage has to be 'cassandra', 'bdb' or 'ram'. '" + storageType + "' given.");
+                    throw new IllegalArgumentException("DEPRECATED command line storage got an Illegal value: " + storageType + ". Please migrate to JSON configuration!");
                 }
             }
 
@@ -627,7 +680,6 @@ public class IndexEngine {
             String indexCode = line.getOptionValue("index-code");
             logger.info("Command line option 'index-code' set to " + indexCode);
 
-            Map<Object, Object> configuration = Maps.newHashMap();
         	
             String configFile = line.getOptionValue("conf-file", null); 
         	logger.info("Command line option 'conf-file' set to " + configFile);
@@ -641,9 +693,9 @@ public class IndexEngine {
                                                rtiSize, 
                                                loadState, 
                                                boostsSize, 
-                                               suggest, 
-                                               storageValue, 
-                                               bdbCache, 
+                                               suggest,
+                                               storageValue,
+                                               bdbCache,
                                                functions, 
                                                facets, 
                                                indexCode, 
