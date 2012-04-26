@@ -1,0 +1,8 @@
+build
+output
+target
+*.iml
+.idea
+out
+logs
+index
