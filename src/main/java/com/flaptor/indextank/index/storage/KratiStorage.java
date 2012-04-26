@@ -19,72 +19,70 @@ import krati.store.DataStore;
 
 public class KratiStorage extends DocumentBinaryStorage {
 
-  private File cacheDirectory;
-  private Charset UTF8_CHARSET ;
-  private DataStore<byte[], byte[]> store;
+    private File cacheDirectory;
+    private Charset UTF8_CHARSET;
+    private DataStore<byte[], byte[]> store;
 
-  public KratiStorage(File cacheDirectory) throws Exception {
-    this.cacheDirectory = cacheDirectory;
+    public KratiStorage(File cacheDirectory) throws Exception {
+        this.cacheDirectory = cacheDirectory;
 
-    StoreConfig config = new StoreConfig(cacheDirectory, 1024);
-    config.setSegmentFactory(new MemorySegmentFactory());
-    config.setSegmentFileSizeMB(64);
-        
-    this.store = StoreFactory.createStaticDataStore(config);
-    this.UTF8_CHARSET = Charset.forName("UTF-8");
-  }
+        StoreConfig config = new StoreConfig(cacheDirectory, 1024);
+        config.setSegmentFactory(new MemorySegmentFactory());
+        config.setSegmentFileSizeMB(64);
 
-  @Override
-  public byte[] getBinaryDoc(String docId) {
-    return this.store.get(docId.getBytes(UTF8_CHARSET));
-  }
-
-  @Override
-  public void saveBinaryDoc(String docId, byte[] bytes){
-    try { 
-      this.store.put(docId.getBytes(UTF8_CHARSET), bytes);
-    } catch (Exception e) {
-      throw new RuntimeException("while savingBinaryDoc:" + e.getMessage(), e);
+        this.store = StoreFactory.createStaticDataStore(config);
+        this.UTF8_CHARSET = Charset.forName("UTF-8");
     }
-  }
 
-  @Override
-  public void deleteBinaryDoc(String docId) {
-    try { 
-      this.store.delete(docId.getBytes(UTF8_CHARSET));
-    } catch (Exception e) {
-      throw new RuntimeException("while deleting BinaryDoc:" + e.getMessage(), e);
+    @Override
+    public byte[] getBinaryDoc(String docId) {
+        return this.store.get(docId.getBytes(UTF8_CHARSET));
     }
-  }
 
-  @Override
-  public void dump() throws IOException {
-    this.store.persist();
-  }
-
-  @Override
-  public Map<String, String> getStats() {
-    return Maps.newHashMap();
-  }
-
-
-  public static class Factory implements DocumentStorageFactory {
-
-    public static final String DIR = "dir";
-
-    @Override 
-    public DocumentStorage fromConfiguration(Map<?, ?> config) {
-      Preconditions.checkNotNull(config);
-      Preconditions.checkNotNull(config.get(DIR), "config needs '" + DIR + "' value");
-
-      File backupDir = new File(config.get(DIR).toString());
-
-      try { 
-        return new KratiStorage(backupDir);
-      } catch (Exception e) {
-        throw new RuntimeException("while creating a KratiStorage: " + e.getMessage(), e);
-      }
+    @Override
+    public void saveBinaryDoc(String docId, byte[] bytes) {
+        try {
+            this.store.put(docId.getBytes(UTF8_CHARSET), bytes);
+        } catch (Exception e) {
+            throw new RuntimeException("while savingBinaryDoc:" + e.getMessage(), e);
+        }
     }
-  } 
+
+    @Override
+    public void deleteBinaryDoc(String docId) {
+        try {
+            this.store.delete(docId.getBytes(UTF8_CHARSET));
+        } catch (Exception e) {
+            throw new RuntimeException("while deleting BinaryDoc:" + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public void dump() throws IOException {
+        this.store.persist();
+    }
+
+    @Override
+    public Map<String, String> getStats() {
+        return Maps.newHashMap();
+    }
+
+    public static class Factory implements DocumentStorageFactory {
+        public static final String DIR = "dir";
+
+        @Override
+        public DocumentStorage fromConfiguration(Map<?, ?> config) {
+            Preconditions.checkNotNull(config);
+            Preconditions.checkNotNull(config.get(DIR), "config needs '" + DIR + "' value");
+
+            File backupDir = new File(config.get(DIR).toString());
+
+            try {
+                return new KratiStorage(backupDir);
+            } catch (Exception e) {
+                throw new RuntimeException("while creating a KratiStorage: " + e.getMessage(), e);
+            }
+        }
+    }
 
 }
