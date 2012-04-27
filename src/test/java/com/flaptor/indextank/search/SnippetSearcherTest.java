@@ -56,7 +56,6 @@ public class SnippetSearcherTest extends IndexTankTestCase {
         stConfig.put(com.flaptor.indextank.index.storage.InMemoryStorage.Factory.DIR, this.tempDir.getPath());
         stConfig.put(com.flaptor.indextank.index.storage.InMemoryStorage.Factory.LOAD, false);
 
-
         this.indexEngine = new IndexEngine(this.tempDir, 11234, 5, false, 5, IndexEngine.SuggestValues.NO, null, false, "dummyCode", "TEST-environment", ieConfig);
         this.indexer = new DocumentStoringIndexer(indexEngine.getIndexer(), indexEngine.getStorage());
         this.searcher = new SnippetSearcher(indexEngine.getSearcher(), indexEngine.getStorage(), indexEngine.getParser());

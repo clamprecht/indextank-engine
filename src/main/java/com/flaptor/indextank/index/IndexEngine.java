@@ -23,6 +23,8 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.flaptor.indextank.index.storage.KratiStorage;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -113,11 +115,10 @@ public class IndexEngine {
 
     private static final int DEFAULT_BASE_PORT = 7910;
     private static final int DEFAULT_RTI_SIZE = 1000;
-    private static final int DEFAULT_BDB_CACHE = 100;
     private static final int DEFAULT_MAX_SEARCH_QUEUE_LENGTH = 100;
 
-    public static enum SuggestValues { NO, QUERIES, DOCUMENTS};
-    public static enum StorageValues { NO, BDB, RAM, CASSANDRA };
+    public static enum SuggestValues { NO, QUERIES, DOCUMENTS }
+    //public static enum StorageValues { NO, BDB, RAM, KRATI }
     
     public IndexEngine( File baseDir, 
                         int basePort, 
@@ -125,9 +126,7 @@ public class IndexEngine {
                         boolean load, 
                         int boostsSize, 
                         SuggestValues suggest,
-                        StorageValues storageValue,
-                        int bdbCache,
-                        String functions, 
+                        String functions,
                         boolean facets, 
                         String indexCode, 
                         String environment ) throws IOException {
@@ -138,9 +137,7 @@ public class IndexEngine {
     	        load, 
     	        boostsSize, 
     	        suggest,
-    	        storageValue,
-    	        bdbCache,
-    	        functions, 
+    	        functions,
     	        facets, 
     	        indexCode, 
     	        environment, 
@@ -154,9 +151,7 @@ public class IndexEngine {
                         boolean load, 
                         int boostsSize, 
                         SuggestValues suggest,
-                        StorageValues storageValue,
-                        int bdbCache,
-                        String functions, 
+                        String functions,
                         boolean facets, 
                         String indexCode, 
                         String environment, 
@@ -275,10 +270,13 @@ public class IndexEngine {
             logger.info("Index recovery configuration set to recover index from cassandra servers: " + this.cassandraClusterHosts);
 
         } else {
-            logger.info("Index recovery configuration set to recover index from simpleDB");
             this.recoveryStorage = IndexRecoverer.IndexStorageValue.SIMPLEDB;
         }
-       
+
+        if (configuration.containsKey("storage_config")) {
+            logger.info("Setting up document storage '" +  configuration.get("storage") +
+                    "' with configuration: " + configuration.get("storage_config"));
+        }
         storage = buildStorage(configuration); 
  
         promoter = new BasicPromoter(baseDir, load);
@@ -317,7 +315,11 @@ public class IndexEngine {
 			throw new RuntimeException("Analyzer factory class threw an exception for the give configuration", e);
 		}
 		return analyzer;
-	};
+	}
+
+    private static final Map<String, String> storageShortcuts =
+            ImmutableMap.of("ram", InMemoryStorage.Factory.class.getName(),
+            "krati", KratiStorage.Factory.class.getName());
 
     public DocumentStorage buildStorage(Map<?, ?> configuration) {
 
@@ -325,44 +327,47 @@ public class IndexEngine {
 
         // parse storage from configuration
         String storageClassStr = (String) configuration.get("storage");
-        if (null == storageClassStr || "".equals(storageClassStr.trim()) ) {
+        if (null == storageClassStr || "".equals(storageClassStr.trim()) || "none".equalsIgnoreCase(storageClassStr.trim())) {
             logger.info("NOT Using storage");
         } else {
-		        try {
+            if (storageShortcuts.containsKey(storageClassStr)) {
+                // shortcuts to allow things like "ram" and "krati" for common ones
+                storageClassStr = storageShortcuts.get(storageClassStr);
+            }
+            try {
                 // it is either a factory, or a concrete class
                 Class storageClass = Class.forName(storageClassStr);
 
                 if (DocumentStorageFactory.class.isAssignableFrom(storageClass)) {
-                // if it was a factory .. 
+                    // if it was a factory ..
                     logger.info("got a DocumentStorageFactory: " + storageClass);
                     DocumentStorageFactory storageFactory = (DocumentStorageFactory) storageClass.newInstance();
-                    Map<?, ?> storageConfig = (Map<?, ?>)configuration.get("storage_config");
-                    if (null == storageConfig) { 
+                    Map<?, ?> storageConfig = (Map<?, ?>) configuration.get("storage_config");
+                    if (null == storageConfig) {
                         logger.warn("no 'storage_config' entry on configuration .. will try an empty Map");
                         storageConfig = Maps.newHashMap();
                     }
 
                     storage = storageFactory.fromConfiguration(storageConfig);
                 } else if (DocumentStorage.class.isAssignableFrom(storageClass)) {
-                // if it was a storage .. 
+                    // if it was a storage ..
                     logger.info("got a DocumentStorage: " + storageClass + ". Trying default Constructor.");
                     storage = (DocumentStorage) storageClass.newInstance();
                 } else {
-                // if it was anything else .. complain
+                    // if it was anything else .. complain
                     logger.error("got a storage option that is NOT a DocumentStorageFactory nor a DocumentStorage. I don't know what to do with it!");
                     throw new IllegalArgumentException("Configuration 'storage' class is not a DocumentStorageFactory nor a DocumentStorage.");
                 }
-		        } catch (ClassNotFoundException e) {
-        			throw new RuntimeException("DocumentStorage(Factory?) class not found", e);
-        		} catch (SecurityException e) {
-        			throw new RuntimeException("DocumentStorage(Factory?) class not instantiable", e);
-        		} catch (InstantiationException e) {
-        			throw new RuntimeException("DocumentStorage(Factory?) class threw an exception for the given configuration", e);
-		        } catch (IllegalAccessException e) {
-			        throw new RuntimeException("DocumentStorage(Factory?) class is not accessible", e);
-        		}
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException("DocumentStorage(Factory?) class not found", e);
+            } catch (SecurityException e) {
+                throw new RuntimeException("DocumentStorage(Factory?) class not instantiable", e);
+            } catch (InstantiationException e) {
+                throw new RuntimeException("DocumentStorage(Factory?) class threw an exception for the given configuration", e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException("DocumentStorage(Factory?) class is not accessible", e);
+            }
         }
-
 
         return storage;
     }
@@ -530,17 +535,6 @@ public class IndexEngine {
                                         .withDescription("DEPRECATED! if present, specifies a storage backend. Only 'ram' is supported on command line. USE JSON CONFIGURATION!.")
                                         .create("st");
 
-        Option bdbCache  = OptionBuilder.withLongOpt("bdb-cache")
-                                        .hasArg()
-                                        .withDescription("if present, specifies the size of the berkeleyDb cache per thread, in megabytes. Defaults to 100MB.")
-                                        .create("bc");
-
-        Option maxSearchQueue = OptionBuilder.withArgName("max-search-queue")
-                .hasArg()
-                .withDescription("Max length of searchers waiting to acquire semaphore")
-                .withLongOpt("max-search-queue")
-                .create("msq");
-
         Options options = new Options();
         options.addOption(baseDir);
         options.addOption(basePort);
@@ -559,8 +553,6 @@ public class IndexEngine {
         options.addOption(didyoumean);
         options.addOption(configFile);
         options.addOption(storage);
-        options.addOption(bdbCache);
-        options.addOption(maxSearchQueue);
 
         return options;
     }
@@ -634,8 +626,6 @@ public class IndexEngine {
                 suggest = SuggestValues.NO;
             }
 
-            StorageValues storageValue = StorageValues.RAM;
-            int bdbCache = 0;
             if (line.hasOption("storage")){
                 logger.warn("command-line option 'storage' is deprecated. write it on the JSON configuration!");
                 logger.warn("I'll try to do that for you this time .. ");
@@ -646,16 +636,14 @@ public class IndexEngine {
                     Map<String, String> storageConfig = Maps.newHashMap();
                     storageConfig.put(InMemoryStorage.Factory.DIR, baseDir.getPath());
                     storageConfig.put(InMemoryStorage.Factory.LOAD, "true");
-
                     configuration.put("storage", InMemoryStorage.class.getName());
                     configuration.put("storage_config", storageConfig);
-                } else if ("bdb".equals(storageType)) {
-                    storageValue = StorageValues.BDB;
-                    bdbCache = Integer.parseInt(line.getOptionValue("bdb-cache", String.valueOf(DEFAULT_BDB_CACHE)));
-                } else if ("cassandra".equals(storageType)) {
-                    storageValue = StorageValues.CASSANDRA;
-                } else if ("ram".equals(storageType)) {
-                    storageValue = StorageValues.RAM;
+                } else if ("krati".equals(storageType)) {
+                    Map<String, String> storageConfig = Maps.newHashMap();
+                    File storageDir = new File(baseDir, "storage");
+                    storageConfig.put(KratiStorage.Factory.DIR, storageDir.getPath());
+                    configuration.put("storage", KratiStorage.class.getName());
+                    configuration.put("storage_config", storageConfig);
                 } else {
                     throw new IllegalArgumentException("DEPRECATED command line storage got an Illegal value: " + storageType + ". Please migrate to JSON configuration!");
                 }
@@ -685,6 +673,7 @@ public class IndexEngine {
         	logger.info("Command line option 'conf-file' set to " + configFile);
             
         	if (configFile != null) {
+                // this overwrites configuration set above
         		configuration = (Map<Object, Object>) JSONValue.parse(FileUtil.readFile(new File(configFile)));
         	}
             IndexEngine ie = new IndexEngine(
@@ -694,9 +683,7 @@ public class IndexEngine {
                                                loadState, 
                                                boostsSize, 
                                                suggest,
-                                               storageValue,
-                                               bdbCache,
-                                               functions, 
+                                               functions,
                                                facets, 
                                                indexCode, 
                                                environment, 
