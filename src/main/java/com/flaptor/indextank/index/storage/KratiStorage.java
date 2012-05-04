@@ -15,7 +15,7 @@ import com.google.common.base.Preconditions;
 
 import krati.core.StoreConfig;
 import krati.core.StoreFactory;
-import krati.core.segment.ChannelSegmentFactory;
+//import krati.core.segment.ChannelSegmentFactory;
 import krati.core.segment.SegmentFactory;
 import krati.core.segment.WriteBufferSegmentFactory;
 import krati.store.DataStore;
@@ -26,7 +26,6 @@ import org.apache.log4j.Logger;
  */
 public class KratiStorage extends DocumentBinaryStorage {
     private static final Logger logger = Logger.getLogger(Execute.whoAmI());
-    private final File cacheDirectory;
     private final Charset UTF8_CHARSET;
     private final DataStore<byte[], byte[]> store;
 
@@ -37,7 +36,6 @@ public class KratiStorage extends DocumentBinaryStorage {
         
         logger.info("Creating a Krati store with initialCapacity " + initialCapacity +
                 " and segmentFileSizeMB " + segmentFileSizeMB);
-        this.cacheDirectory = cacheDirectory;
         if (!cacheDirectory.exists()) {
             logger.info("Creating new storage directory: " + cacheDirectory.getAbsolutePath());
             cacheDirectory.mkdirs();
@@ -48,6 +46,7 @@ public class KratiStorage extends DocumentBinaryStorage {
         }
         this.UTF8_CHARSET = Charset.forName("UTF-8");
 
+        // RAM usage for initialCapacity is initialCapacity * 8 bytes
         StoreConfig config = new StoreConfig(cacheDirectory, initialCapacity);
         config.setBatchSize(10000);     // 10000 performed better loading index
         config.setNumSyncBatches(5);
@@ -100,7 +99,7 @@ public class KratiStorage extends DocumentBinaryStorage {
     }
 
     public static class Factory implements DocumentStorageFactory {
-        /** the KEY for backup directory on the config. it is <b>REQUIRED</b> */
+        /** the KEY for storage directory on the config.  Defaults to 'storage' */
         public static final String DIR = "dir";
         public static final String INITIAL_CAPACITY = "initial_capacity";
         public static final String SEGMENT_FILESIZE_MB = "segment_filesize";
@@ -110,7 +109,6 @@ public class KratiStorage extends DocumentBinaryStorage {
             Preconditions.checkNotNull(config);
             //Preconditions.checkNotNull(config.get(DIR), "config needs '" + DIR + "' value");
 
-//            File backupDir = new File(config.get(DIR).toString());
             File storageDir = new File("storage");
             if (config.containsKey(DIR)) {
                 storageDir = new File(config.get(DIR).toString());
