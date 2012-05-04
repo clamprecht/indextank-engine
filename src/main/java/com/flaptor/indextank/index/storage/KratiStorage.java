@@ -17,6 +17,7 @@ import krati.core.StoreConfig;
 import krati.core.StoreFactory;
 import krati.core.segment.ChannelSegmentFactory;
 import krati.core.segment.SegmentFactory;
+import krati.core.segment.WriteBufferSegmentFactory;
 import krati.store.DataStore;
 import org.apache.log4j.Logger;
 
@@ -48,12 +49,12 @@ public class KratiStorage extends DocumentBinaryStorage {
         this.UTF8_CHARSET = Charset.forName("UTF-8");
 
         StoreConfig config = new StoreConfig(cacheDirectory, initialCapacity);
-        config.setBatchSize(2000);
+        config.setBatchSize(10000);     // 10000 performed better loading index
         config.setNumSyncBatches(5);
         // ChannelSegment uses less RAM, with possibly lower write performance
-        SegmentFactory segmentFactory = new ChannelSegmentFactory();
+        //SegmentFactory segmentFactory = new ChannelSegmentFactory();
         // WriteBufferSegment may give better write performance, but uses more memory
-//        SegmentFactory segmentFactory = new WriteBufferSegmentFactory(64);
+        SegmentFactory segmentFactory = new WriteBufferSegmentFactory(segmentFileSizeMB);
         config.setSegmentFactory(segmentFactory);
         config.setSegmentFileSizeMB(segmentFileSizeMB);
         this.store = StoreFactory.createIndexedDataStore(config);
