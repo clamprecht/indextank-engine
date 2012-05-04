@@ -237,9 +237,11 @@ public class SearcherServer {
         public int size() throws IndextankException {
             try {
                 logger.debug("Fetching size");
+                long start = System.currentTimeMillis();
                 Query query = new Query(new MatchAllQuery(),null,null);
                 int size = this.searcher.countMatches(query);
-                logger.info("Fetched size: " + size);
+                long elapsed = System.currentTimeMillis() - start;
+                logger.info("Fetched size in " + elapsed + " ms: " + size);
                 return size;
             } catch (RuntimeException e) {
                 logger.error("RuntimeException while processing size. Will throw an IndexTankException. Original Exception is:", e);
