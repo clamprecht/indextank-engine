@@ -18,25 +18,16 @@ package com.flaptor.indextank.index.storage;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.UTFDataFormatException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentMap;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import org.apache.log4j.Logger;
 
@@ -196,22 +187,23 @@ public class InMemoryStorage extends DocumentBinaryStorage {
 
 
     /**
-     * A {@link DocumnentStorageFactory} that returns {@link InMemoryStorage} classes.
+     * A {@link @DocumentStorageFactory} that returns {@link InMemoryStorage} classes.
      */
     public static class Factory implements DocumentStorageFactory {
-
-        /** the KEY for backup directory on the config. it is <b>REQUIRED</b> */
+        /** the KEY for backup directory on the config. default "index" */
         public final static String DIR = "dir";
-        /** the KEY for 'load config from disk on startup' on the config. it is <b>REQUIRED</b> */
+        /** the KEY for 'load config from disk on startup' on the config. default false */
         public final static String LOAD = "load";
 
         @Override
         public DocumentStorage fromConfiguration(Map<?, ?> config) {
-            Preconditions.checkNotNull(config);
-            Preconditions.checkState(!config.isEmpty(), "config cannot be empty");
-            Preconditions.checkNotNull(config.get(DIR), "config needs '" + DIR + "' entry");
-            Preconditions.checkNotNull(config.get(DIR), "config needs '" + LOAD + "' entry");
-
+            if (config == null || config.isEmpty()) {
+                // use defaults
+                Map<String, String> cfg = Maps.newHashMap();
+                cfg.put(DIR, "index");
+                cfg.put(LOAD, "false");
+                config = cfg;
+            }
 
             File backupDir = new File( config.get(DIR).toString() );
             // toString is better than casting to String .. as the value _might_ be a boolean
