@@ -597,6 +597,13 @@ public class IndexEngine {
         // create the parser
         CommandLineParser parser = new PosixParser();
         try {
+            // get JVM info
+            Runtime runtime = Runtime.getRuntime();
+            // maxMemory is the -Xmx value
+            String jvmVendor = System.getProperty("java.vm.vendor");
+            logger.info("JVM info: " + jvmVendor+", " + runtime.availableProcessors() + " processors, JVM max memory: " +
+                runtime.maxMemory());
+
             // parse the command line arguments
             CommandLine line = parser.parse( getOptions(), args );
             if (line.hasOption("help")) { 
