@@ -114,7 +114,7 @@ import java.lang.reflect.Constructor;
                 public int getBoostCount() {return 1;}
                 public int getTimestamp() {return 0;}
             };
-        QueryVariables query_vars = new QueryVariablesImpl(new Double[] {0.0d,1.0d,2.0d,3.0d,4.0d,5.0d,6.0d,7.0d,8.0d,9.0d});
+        QueryVariables query_vars = new QueryVariablesImpl(new Double[] {0.0d,1.0d,2.0d,3.0d,4.0d,5.0d,6.0d,7.0d,8.0d,9.0d}, null, null);
         double score = 0.5d;
         int age = 100;
 
@@ -153,6 +153,20 @@ import java.lang.reflect.Constructor;
         b.swap(); // swap the top two words on the stack, so the var id is on top
         params = new TypeDesc[] {TypeDesc.INT}; // the type of the id parameter (int)
         b.invokeInterface(queryVarType, "getValue", TypeDesc.DOUBLE, params);
+    }
+
+    private void emit_ipgeo_lat() {
+        b.loadLocal(queryVarParam); // push the queryVar parameter
+        // call getIpGeoLat()
+        params = new TypeDesc[] {}; // no parameters
+        b.invokeInterface(queryVarType, "getIpGeoLat", TypeDesc.DOUBLE, params);
+    }
+
+    private void emit_ipgeo_lon() {
+        b.loadLocal(queryVarParam); // push the queryVar parameter
+        // call getIpGeoLon()
+        params = new TypeDesc[] {}; // no parameters
+        b.invokeInterface(queryVarType, "getIpGeoLon", TypeDesc.DOUBLE, params);
     }
 
     private void emit_return() {
@@ -304,6 +318,8 @@ var
 	|	BOOST '(' integer ')' { emit_docVar(); }
 	|	DOC_VAR '[' integer ']' { emit_docVar(); }
 	|	QUERY_VAR '[' integer ']' { emit_queryVar(); }
+	|	IPGEO_LAT { emit_ipgeo_lat(); }
+	|	IPGEO_LON { emit_ipgeo_lon(); }
 	;
 
 number
@@ -344,6 +360,12 @@ DOC_VAR
 	;
 QUERY_VAR
 	:	'Q' | 'q' | 'qvar' | 'query.var'
+	;
+IPGEO_LAT
+	:	'ipgeo.lat'
+	;
+IPGEO_LON
+	:	'ipgeo.lon'
 	;
 
 INT

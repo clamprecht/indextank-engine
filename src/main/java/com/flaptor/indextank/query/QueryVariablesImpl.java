@@ -21,10 +21,15 @@ import java.util.Map.Entry;
 
 public final class QueryVariablesImpl implements QueryVariables {
     private final Double[] vars;
-    
-	public QueryVariablesImpl(Double[] vars) {
+    private Float lat;
+    private Float lon;
+
+    public QueryVariablesImpl(Double[] vars, Float latitude, Float longitude) {
         this.vars = vars;
+        this.lat = latitude;
+        this.lon = longitude;
     }
+
     public double getValue(int varIndex) {
         if (varIndex >= vars.length || vars[varIndex] == null)
             throw new NoSuchQueryVariableException("Query variable " + varIndex + " is not defined in this query.", varIndex);
@@ -34,8 +39,20 @@ public final class QueryVariablesImpl implements QueryVariables {
 	public int getVariablesCount() {
 	    return vars.length;
 	}
-	
-    public static QueryVariables fromMap(Map<Integer, Double> map) {
+
+    public double getIpGeoLat() {
+        if (lat == null)
+            throw new NoSuchQueryVariableException("Query variable 'ipgeo.lat' is not defined in this query.", -1);
+        return lat;
+    }
+
+    public double getIpGeoLon() {
+        if (lon == null)
+            throw new NoSuchQueryVariableException("Query variable 'ipgeo.lon' is not defined in this query.", -1);
+        return lon;
+    }
+
+    public static QueryVariables fromMap(Map<Integer, Double> map, Float latitude, Float longitude) {
         int maxIdx = -1;
         for (Integer idx : map.keySet()) {
             maxIdx = Math.max(maxIdx, idx);
@@ -44,6 +61,6 @@ public final class QueryVariablesImpl implements QueryVariables {
         for (Entry<Integer, Double> e : map.entrySet()) {
             vars[e.getKey()] = e.getValue();
         }
-        return new QueryVariablesImpl(vars);
+        return new QueryVariablesImpl(vars, latitude, longitude);
     }
 }

@@ -149,8 +149,16 @@ public class SearcherServer {
 
         public ResultSet search(String queryStr, int start, int len, int scoringFunctionIndex, Map<Integer, Double> queryVariables, List<CategoryFilter> facetsFilter, List<RangeFilter> variableRangeFilters, List<RangeFilter> functionRangeFilters, Map<String,String> extraParameters) throws IndextankException, InvalidQueryException, MissingQueryVariableException {
             logger.debug("Searching: start: " + start + ", len: " + len +", query: \"" + queryStr + "\"");
-            try { 
-                Query query = generateQuery(queryStr,start,len, QueryVariablesImpl.fromMap(queryVariables), convertToMultimap(facetsFilter), new IntersectionMatchFilter(convertToVariableRangeFilter(variableRangeFilters), convertToFunctionRangeFilter(functionRangeFilters)));
+            try {
+                Float[] latLon = getLatLon(extraParameters);
+                Float latitude = null, longitude = null;
+                if (latLon != null) {
+                    latitude = latLon[0];
+                    longitude = latLon[1];
+                }
+
+                QueryVariables queryVars = QueryVariablesImpl.fromMap(queryVariables, latitude, longitude);
+                Query query = generateQuery(queryStr,start,len, queryVars, convertToMultimap(facetsFilter), new IntersectionMatchFilter(convertToVariableRangeFilter(variableRangeFilters), convertToFunctionRangeFilter(functionRangeFilters)));
                 ResultSet resultSet = toResultSet(this.searcher.search(query, start, len, scoringFunctionIndex, extraParameters));
                 logger.info("Search found " + resultSet.get_matches() + " results - start: " + start + ", len: " + len +", query: \"" + queryStr + "\"");
                 return resultSet;
@@ -159,7 +167,11 @@ public class SearcherServer {
                     logger.debug("Some query variables (" + queryVariables + ") are missing for evaluating functions",e); 
                 }
                 MissingQueryVariableException ite = new MissingQueryVariableException();
-                ite.set_message("Missing query variable with index '" + e.getMissingVariableIndex() + "'");
+                if (e.getMissingVariableIndex() >= 0) {
+                    ite.set_message("Missing query variable with index '" + e.getMissingVariableIndex() + "'");
+                } else {
+                    ite.set_message("Missing query ipgeo variable while evaluating scoring function");
+                }
                 throw ite;
             } catch (ParseException pe) {
                 if (logger.isDebugEnabled()){
@@ -176,6 +188,24 @@ public class SearcherServer {
                 IndextankException ite = new IndextankException();
                 ite.set_message("Interrupted while searching.");
                 throw ite;
+            }
+        }
+
+        private Float[] getLatLon(Map<String, String> extraParameters) {
+            String ipLat = extraParameters.get("iplat");
+            String ipLon = extraParameters.get("iplon");
+            if (ipLat == null || ipLon == null)
+                return null;
+            // what to do if no lat/lon is set, but they try to access them in functions?
+            // answer: treat same as accessing q.var[0] when it's not set
+            try {
+                Float lat = Float.valueOf(ipLat);
+                Float lon = Float.valueOf(ipLon);
+                // only return latitude/longitude if both parse without errors
+                return new Float[] { lat, lon };
+            } catch (NumberFormatException nfe) {
+                logger.warn("NumberFormatException reading extraParams iplat/iplon: (" + ipLat+", "+ipLon+")", nfe);
+                return null;
             }
         }
         
@@ -258,6 +288,8 @@ public class SearcherServer {
             return new SearcherStats();
         }
 
-    } 
+    }
+
+
 
 }
