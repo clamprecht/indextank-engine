@@ -52,6 +52,10 @@ public final class QueryVariablesImpl implements QueryVariables {
         return lon;
     }
 
+    public static QueryVariables fromMap(Map<Integer, Double> map) {
+        return fromMap(map, null, null);
+    }
+    
     public static QueryVariables fromMap(Map<Integer, Double> map, Float latitude, Float longitude) {
         int maxIdx = -1;
         for (Integer idx : map.keySet()) {
