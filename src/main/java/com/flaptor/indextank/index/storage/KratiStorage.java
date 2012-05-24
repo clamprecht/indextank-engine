@@ -32,7 +32,7 @@ public class KratiStorage extends DocumentBinaryStorage {
 
     KratiStorage(File cacheDirectory, String segmentFactoryString, int initialCapacity, int segmentFileSizeMB) throws Exception {
         Preconditions.checkArgument(initialCapacity >= 50000, "Initial capacity must be at least 50000");
-        Preconditions.checkArgument(segmentFileSizeMB >= 16, "segmentFileSizeMB must be at least 16");
+        Preconditions.checkArgument(segmentFileSizeMB >= 8, "segmentFileSizeMB must be at least 8");
         Preconditions.checkArgument(segmentFileSizeMB <= 512, "segmentFileSizeMB must be <= 512");
         
         logger.info("Creating a Krati store with initialCapacity " + initialCapacity +
