@@ -30,7 +30,7 @@ public class KratiStorageTest extends TestCase {
 	@Override
 	protected void setUp() throws Exception {
         super.setUp();
-		storage = new KratiStorage(FileUtil.createTempDir("testKratiStorage", ".tmp"), 50000, 32);
+		storage = new KratiStorage(FileUtil.createTempDir("testKratiStorage", ".tmp"), "channel", 50000, 32);
 		text = "The main doubt we have regarding the add-on is how should we support the service for testing environments. Currently, an IndexTank account allows you to create several indexes, either via the control panel or the api. The indextank client needs to be configured with the index code to use. Would it be ok for each Heroku user to create his own indexes and configure them for each environment on their own? or should we provide that out-of-the-box somehow";
 	}
 	
@@ -41,7 +41,7 @@ public class KratiStorageTest extends TestCase {
     
     @TestInfo(testType=TestType.UNIT)
     public void testTextOnlyDocument() throws Exception {
-        KratiStorage storage = new KratiStorage(FileUtil.createTempDir("testInMemoryStorage", ".tmp"), 50000, 32);
+        KratiStorage storage = new KratiStorage(FileUtil.createTempDir("testInMemoryStorage", ".tmp"), "channel", 50000, 32);
         Document doc1 = new Document();
         doc1.setField("text", text);
         storage.saveDocument("a", doc1);
