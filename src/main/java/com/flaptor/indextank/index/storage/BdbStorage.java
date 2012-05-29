@@ -18,6 +18,7 @@ package com.flaptor.indextank.index.storage;
 
 import com.flaptor.indextank.index.Document;
 import com.flaptor.indextank.storage.alternatives.DocumentStorage;
+import com.flaptor.indextank.storage.alternatives.DocumentStorageFactory;
 import com.flaptor.util.Execute;
 import com.flaptor.util.FileUtil;
 import com.google.common.base.Preconditions;
@@ -169,7 +170,7 @@ public class BdbStorage extends DocumentBinaryStorage {
         }
     }
 
-    public static class Factory { //implements DocumentStorageFactory {
+    public static class Factory implements DocumentStorageFactory {
         /** the KEY for storage directory on the config.  Defaults to 'storage' */
         public static final String DIR = "dir";
         public static final String BDB_CACHE_MB = "bdb_cache";
