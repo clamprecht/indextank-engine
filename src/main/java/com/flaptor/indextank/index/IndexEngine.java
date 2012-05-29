@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.flaptor.indextank.index.storage.BdbStorage;
 import com.flaptor.indextank.index.storage.KratiStorage;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.cli.CommandLine;
@@ -319,7 +320,8 @@ public class IndexEngine {
 
     private static final Map<String, String> storageShortcuts =
             ImmutableMap.of("ram", InMemoryStorage.Factory.class.getName(),
-            "krati", KratiStorage.Factory.class.getName());
+            "krati", KratiStorage.Factory.class.getName(),
+            "bdb", BdbStorage.Factory.class.getName());
 
     public DocumentStorage buildStorage(Map<?, ?> configuration) {
 
@@ -650,6 +652,12 @@ public class IndexEngine {
                     File storageDir = new File(baseDir, "storage");
                     storageConfig.put(KratiStorage.Factory.DIR, storageDir.getPath());
                     configuration.put("storage", KratiStorage.class.getName());
+                    configuration.put("storage_config", storageConfig);
+                } else if ("bdb".equals(storageType)) {
+                    Map<String, String> storageConfig = Maps.newHashMap();
+                    File storageDir = new File(baseDir, "storage");
+                    storageConfig.put(BdbStorage.Factory.DIR, storageDir.getPath());
+                    configuration.put("storage", BdbStorage.class.getName());
                     configuration.put("storage_config", storageConfig);
                 } else {
                     throw new IllegalArgumentException("DEPRECATED command line storage got an Illegal value: " + storageType + ". Please migrate to JSON configuration!");
