@@ -76,8 +76,8 @@ public class BdbStorage extends DocumentBinaryStorage {
             config.setErrorPrefix("BDBError");
             // HASH may be better for large datasets with no key locality.
             config.setType(dbType); // BTREE or HASH
-            //config.setAllowCreate(true);
-            //config.setCacheSize(cacheSizeMB * 1024 * 1024);
+            config.setAllowCreate(true);
+            config.setCacheSize(cacheSizeMB * 1024 * 1024);
             /* you want to select a page size that is at least large enough to hold multiple entries
             given the expected average size of your database entries. In BTree's case, for best results
             select a page size that can hold at least 4 such entries. */
