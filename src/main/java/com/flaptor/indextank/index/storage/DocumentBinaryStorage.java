@@ -16,25 +16,17 @@
 
 package com.flaptor.indextank.index.storage;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.UTFDataFormatException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Scanner;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -43,9 +35,6 @@ import org.apache.log4j.Logger;
 import com.flaptor.indextank.index.Document;
 import com.flaptor.indextank.storage.alternatives.DocumentStorage;
 import com.flaptor.util.Execute;
-import com.flaptor.util.FileUtil;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
 
 
@@ -59,6 +48,9 @@ public abstract class DocumentBinaryStorage implements DocumentStorage {
   private static final int COMPRESSION_THRESHOLD = 100;
   private static final int HEADER_COMPRESSED = 0x1;
   private static final int HEADER_HAS_TEXT = 0x2;
+  private final AtomicInteger addCount = new AtomicInteger(0);
+  private final AtomicInteger keyLengthSum = new AtomicInteger(0);
+  private final AtomicLong valueLengthSum = new AtomicLong(0);
 
   protected abstract byte[] getBinaryDoc(String docId);
   protected abstract void saveBinaryDoc(String docId, byte[] bytes);
@@ -72,13 +64,30 @@ public abstract class DocumentBinaryStorage implements DocumentStorage {
 
 	@Override
 	public void saveDocument(String docId, Document document) {
-		saveBinaryDoc(docId, compress(document));
+        byte[] docBytes = compress(document);
+        saveBinaryDoc(docId, docBytes);
+        addCount.incrementAndGet();
+        keyLengthSum.addAndGet(docId.length());
+        valueLengthSum.addAndGet(docBytes.length);
 	}
 
 	@Override
 	public void deleteDocument(String docId) {
 		deleteBinaryDoc(docId);
 	}
+
+    protected Map<String, String> getLengthStats() {
+        int adds = addCount.get();
+        int keyLength = keyLengthSum.get();
+        long valueLength = valueLengthSum.get();
+        int avgKeyLength = keyLength / Math.max(1, adds);
+        long avgValueLength = valueLength / Math.max(1L, adds);
+        Map<String, String> stats = Maps.newHashMap();
+        stats.put("add_count", String.valueOf(adds));
+        stats.put("avg_key_length", String.valueOf(avgKeyLength));
+        stats.put("avg_value_length", String.valueOf(avgValueLength));
+        return stats;
+    }
 
 	private static byte[] compress(Document document) {
 		try {
