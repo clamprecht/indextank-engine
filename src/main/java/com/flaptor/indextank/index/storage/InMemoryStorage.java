@@ -96,11 +96,17 @@ public class InMemoryStorage extends DocumentBinaryStorage {
     }
   }
 
+  @Override
   public void dump() throws IOException {
     syncToDisk();
   }
 
-  /**
+  @Override
+  public void close() throws IOException {
+    // nothing to do
+  }
+
+    /**
    * Serializes this instance content to disk.
    * Blocking method.
    */
@@ -181,6 +187,7 @@ public class InMemoryStorage extends DocumentBinaryStorage {
     @Override
     public Map<String, String> getStats() {
         HashMap<String, String> stats = Maps.newHashMap();
+        stats.putAll(getLengthStats());
         stats.put("in_memory_storage_count", String.valueOf(compressedMap.size()));
         return stats;
     }
