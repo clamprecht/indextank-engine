@@ -101,11 +101,6 @@ public class InMemoryStorage extends DocumentBinaryStorage {
     syncToDisk();
   }
 
-  @Override
-  public void close() throws IOException {
-    // nothing to do
-  }
-
     /**
    * Serializes this instance content to disk.
    * Blocking method.
