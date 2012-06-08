@@ -83,9 +83,9 @@ public abstract class DocumentBinaryStorage implements DocumentStorage {
         int avgKeyLength = keyLength / Math.max(1, adds);
         long avgValueLength = valueLength / Math.max(1L, adds);
         Map<String, String> stats = Maps.newHashMap();
-        stats.put("add_count", String.valueOf(adds));
-        stats.put("avg_key_length", String.valueOf(avgKeyLength));
-        stats.put("avg_value_length", String.valueOf(avgValueLength));
+        stats.put("storage_add_count", String.valueOf(adds));
+        stats.put("storage_avg_key_length", String.valueOf(avgKeyLength));
+        stats.put("storage_avg_value_length", String.valueOf(avgValueLength));
         return stats;
     }
 
