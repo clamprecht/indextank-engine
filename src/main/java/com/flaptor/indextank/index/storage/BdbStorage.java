@@ -41,16 +41,13 @@ public class BdbStorage extends DocumentBinaryStorage {
     private static final String MAIN_FILE_NAME = "BdbStorage";
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
     private final Database database;
-    //private final File storageDir;
 
     public BdbStorage(File storageDir, int cacheSizeMB, DatabaseConfig config) throws IOException {
         Preconditions.checkArgument(cacheSizeMB >= 1, "cacheSizeMB must be at least 1");
         Preconditions.checkArgument(cacheSizeMB <= 4096, "cacheSizeMB must be <= 4096");
         Preconditions.checkNotNull(storageDir);
-        //this.storageDir = storageDir;
 
-        //File storageFile = new File(storageDir, MAIN_FILE_NAME);
-        logger.info("Creating a BDB store with cache size " + cacheSizeMB + " MB in " + storageDir);
+        logger.info("Creating a BDB store in '" + storageDir + "' with cache size " + cacheSizeMB + "MB");
         if (config.getType() == DatabaseType.BTREE) {
             logger.info("BDB storage type: BTREE");
         } else if (config.getType() == DatabaseType.HASH) {
@@ -59,10 +56,10 @@ public class BdbStorage extends DocumentBinaryStorage {
         }
 
         if (!storageDir.exists()) {
-            logger.info("Creating new storage directory: " + storageDir.getAbsolutePath());
+            logger.debug("Creating new storage directory: " + storageDir.getAbsolutePath());
             storageDir.mkdirs();
         } else {
-            logger.info("Removing & creating storage directory: " + storageDir.getAbsolutePath());
+            logger.debug("Removing & creating storage directory: " + storageDir.getAbsolutePath());
             FileUtil.deleteDir(storageDir);
             storageDir.mkdirs();
         }
@@ -73,25 +70,18 @@ public class BdbStorage extends DocumentBinaryStorage {
             ec.setInitializeCDB(true);
             ec.setCacheSize(cacheSizeMB * 1024 * 1024);
             ec.setInitializeCache(true);
-            ec.setErrorStream(getErrorStream());
+            ec.setErrorStream(System.err);
             ec.setErrorPrefix("BDBError");
             Environment env = new Environment(storageDir, ec);
 
-//            DatabaseConfig config = new DatabaseConfig();
-            //config.setErrorStream(getErrorStream());
-            //config.setErrorPrefix("BDBError");
-            // HASH may be better for large datasets with no key locality.
-//            config.setType(dbType); // BTREE or HASH
             config.setAllowCreate(true);
             config.setCacheSize(cacheSizeMB * 1024 * 1024);
 
-            //config.set
             /* you want to select a page size that is at least large enough to hold multiple entries
             given the expected average size of your database entries. In BTree's case, for best results
             select a page size that can hold at least 4 such entries. */
             // must be power of 2
             //config.setPageSize()
-            //database = new Database(storageFile.getAbsolutePath(), null, config);
             database = env.openDatabase(null, MAIN_FILE_NAME, null, config);
         } catch (DatabaseException e) {
             logger.error("DatabaseException in BdbStorage", e);
@@ -99,20 +89,8 @@ public class BdbStorage extends DocumentBinaryStorage {
         }
     }
 
-    public PrintStream getErrorStream() {
-        return System.err;
-    }
-
     public void dump() throws IOException {
         syncToDisk();
-    }
-
-    public void close() throws IOException {
-        try {
-            database.close();
-        } catch (DatabaseException e) {
-            throw new IOException(e);
-        }
     }
 
     /**
@@ -136,8 +114,6 @@ public class BdbStorage extends DocumentBinaryStorage {
             DatabaseEntry key = new DatabaseEntry(docId.getBytes(UTF8_CHARSET));
             DatabaseEntry readValue = new DatabaseEntry();
             OperationStatus status = database.get(null, key, readValue, LockMode.DEFAULT);
-            // see http://docs.oracle.com/cd/E17076_02/html/programmer_reference/am_misc_bulk.html
-//            MultipleKeyDataEntry mkey = new MultipleKeyDataEntry();
             if (status == OperationStatus.SUCCESS) {
                 return readValue.getData();
             }
@@ -244,10 +220,10 @@ public class BdbStorage extends DocumentBinaryStorage {
                 int hashFillFactor = -1;
                 int hashNumElements = -1;
                 if (config.containsKey(HASH_FILLFACTOR)) {
-                    hashFillFactor = Integer.parseInt((String) config.get(HASH_FILLFACTOR));
+                    hashFillFactor = Integer.valueOf(config.get(HASH_FILLFACTOR).toString());
                 }
                 if (config.containsKey(HASH_NUMELEMENTS)) {
-                    hashNumElements = Integer.parseInt((String) config.get(HASH_NUMELEMENTS));
+                    hashNumElements = Integer.valueOf(config.get(HASH_NUMELEMENTS).toString());
                 }
 
                 // HASH config:
@@ -270,57 +246,22 @@ public class BdbStorage extends DocumentBinaryStorage {
         }
     }
 
-    /**
-     * Allows testing changes to the compression method, it first
-     * validates the correctness of the implementation and then
-     * lists the compression value and ratio for several document
-     * sizes.
-     * <p/>
-     * First argument should be the text to use for texting, it will
-     * be clipped to different sizes for ratio testing.
-     */
     public static void main(String[] args) throws IOException {
-        //testCorrectness(args);
-        //testCompressionRatio(args);
         int cacheSizeMB = 10;
         DatabaseConfig databaseConfig = new DatabaseConfig();
         databaseConfig.setType(DatabaseType.BTREE);
         databaseConfig.setAllowCreate(true);
         databaseConfig.setCacheSize(cacheSizeMB * 1024 * 1024);
-        BdbStorage ims = new BdbStorage(new File(args[0]), cacheSizeMB, databaseConfig);
+        BdbStorage store = new BdbStorage(new File(args[0]), cacheSizeMB, databaseConfig);
         Scanner in = new Scanner(System.in);
 
-        while (in.hasNextLine()) {
-            Document document = ims.getDocument(in.nextLine());
-            System.out.println(document);
+        try {
+            while (in.hasNextLine()) {
+                Document document = store.getDocument(in.nextLine());
+                System.out.println(document);
+            }
+        } finally {
+            store.dump();
         }
-
-    }
-
-    private static void testCorrectness(String[] args) throws IOException {
-        File storageDir = FileUtil.createTempDir("testBdbStorage", ".tmp");
-        DatabaseConfig databaseConfig = new DatabaseConfig();
-        databaseConfig.setType(DatabaseType.BTREE);
-        databaseConfig.setAllowCreate(true);
-        int cacheSizeMB = 10;
-        databaseConfig.setCacheSize(cacheSizeMB * 1024 * 1024);
-        BdbStorage storage = new BdbStorage(storageDir, cacheSizeMB, databaseConfig);
-        Document doc1 = new Document();
-        doc1.setField("text", args[0]);
-        storage.saveDocument("a", doc1);
-        Document dd1 = storage.getDocument("a");
-        Preconditions.checkState(dd1.equals(doc1), dd1 + " - " + doc1);
-        Document doc2 = new Document();
-        doc2.setField("nottext", args[0]);
-        storage.saveDocument("b", doc2);
-        Document dd2 = storage.getDocument("b");
-        Preconditions.checkState(dd2.equals(doc2), dd2);
-        Document doc3 = new Document();
-        doc3.setField("text", args[0]);
-        doc3.setField("f1", "v1");
-        doc3.setField("f2", "v2");
-        storage.saveDocument("c", doc3);
-        Document dd3 = storage.getDocument("c");
-        Preconditions.checkState(dd3.equals(doc3), dd3);
     }
 }
