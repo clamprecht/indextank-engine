@@ -47,10 +47,10 @@ public class IndexEngineParser {
 		this(defaultField, new IndexEngineAnalyzer());
 	}
 	
-    @SuppressWarnings("deprecation")
     public QueryNode parseQuery(final String queryStr) throws ParseException {
-        org.apache.lucene.queryParser.QueryParser qp = new org.apache.lucene.queryParser.QueryParser(Version.LUCENE_CURRENT, defaultField, getAnalyzer());
+        org.apache.lucene.queryParser.QueryParser qp = new org.apache.lucene.queryParser.QueryParser(Version.LUCENE_36, defaultField, getAnalyzer());
         qp.setDefaultOperator(org.apache.lucene.queryParser.QueryParser.Operator.AND);
+        qp.setAutoGeneratePhraseQueries(true);
         org.apache.lucene.search.Query luceneQuery;
         try {
             luceneQuery = qp.parse(queryStr);
@@ -73,6 +73,7 @@ public class IndexEngineParser {
 
     public Iterator<AToken> parseDocumentField(String fieldName, String content) {
         final TokenStream tkstream = analyzer.tokenStream(fieldName, new StringReader(content));
+        // todo - use CharTermAttribute instead of TermAttribute
         final TermAttribute termAtt = tkstream.addAttribute(TermAttribute.class);
         final PositionIncrementAttribute posIncrAttribute = tkstream.addAttribute(PositionIncrementAttribute.class);
         final OffsetAttribute offsetAtt = tkstream.addAttribute(OffsetAttribute.class);
