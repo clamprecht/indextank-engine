@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Map;
 
+import com.flaptor.indextank.index.Document;
 import com.flaptor.indextank.storage.alternatives.DocumentStorage;
 import com.flaptor.indextank.storage.alternatives.DocumentStorageFactory;
 
@@ -144,4 +145,24 @@ public class KratiStorage extends DocumentBinaryStorage {
         }
     }
 
+    private static void testCorrectness(String[] args) throws Exception {
+        KratiStorage storage = new KratiStorage(FileUtil.createTempDir("testKratiStorage", ".tmp"), "channel", 50000, 32);
+        Document doc1 = new Document();
+        doc1.setField("text", args[0]);
+        storage.saveDocument("a", doc1);
+        Document dd1 = storage.getDocument("a");
+        Preconditions.checkState(dd1.equals(doc1), dd1 + " - " + doc1);
+        Document doc2 = new Document();
+        doc2.setField("nottext", args[0]);
+        storage.saveDocument("b", doc2);
+        Document dd2 = storage.getDocument("b");
+        Preconditions.checkState(dd2.equals(doc2), dd2);
+        Document doc3 = new Document();
+        doc3.setField("text", args[0]);
+        doc3.setField("f1", "v1");
+        doc3.setField("f2", "v2");
+        storage.saveDocument("c", doc3);
+        Document dd3 = storage.getDocument("c");
+        Preconditions.checkState(dd3.equals(doc3), dd3);
+    }
 }
