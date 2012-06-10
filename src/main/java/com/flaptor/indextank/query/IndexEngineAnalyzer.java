@@ -16,49 +16,88 @@
 
 package com.flaptor.indextank.query;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Map;
-
-import org.apache.lucene.analysis.ASCIIFoldingFilter;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.LowerCaseFilter;
-import org.apache.lucene.analysis.StopFilter;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.standard.StandardFilter;
-import org.apache.lucene.analysis.standard.StandardTokenizer;
-
-import com.flaptor.indextank.query.analyzers.StopAnalyzer;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.standard.ClassicAnalyzer;
+import org.apache.lucene.util.Version;
+import org.json.simple.JSONArray;
 
-public class IndexEngineAnalyzer extends StopAnalyzer {
+import java.io.Reader;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
-    @SuppressWarnings("deprecation")
-	public IndexEngineAnalyzer(Map<Object, Object> configuration) {
-        super(configuration);
+public final class IndexEngineAnalyzer extends Analyzer {
+    private static final String STOPWORDS = "stopwords";
+    private final ClassicAnalyzer classic;
+//    private final StandardAnalyzer delegate;
+    private final Set<String> stopwords;
+
+    public IndexEngineAnalyzer(Map<Object, Object> configuration) {
+        super();
+        this.stopwords = getStopWords(configuration);
+        this.classic = new ClassicAnalyzer(Version.LUCENE_36, stopwords);
+//        this.delegate = new StandardAnalyzer(Version.LUCENE_36, stopwords);
     }
 
     public IndexEngineAnalyzer() {
         this(Maps.newHashMap());
     }
-    
-    /** Constructs a {@link StandardTokenizer} filtered by a {@link
-      StandardFilter}, a {@link LowerCaseFilter} and a {@link StopFilter}. */
+
     @Override
     public TokenStream tokenStream(String fieldName, Reader reader) {
-        TokenStream result = super.tokenStream(fieldName, reader);
+        TokenStream result = classic.tokenStream(fieldName, reader);
+//        TokenStream result = delegate.tokenStream(fieldName, reader);
         result = new ASCIIFoldingFilter(result);
-        
+
         return result;
     }
 
+    // todo - implement ReusableAnalyzerBase instead
+
+    /*
+    @Override
+    protected ReusableAnalyzerBase.TokenStreamComponents createComponents(final String fieldName, final Reader reader) {
+        final ClassicTokenizer src = new ClassicTokenizer(Version.LUCENE_36, reader);
+        src.setMaxTokenLength(maxTokenLength);
+        //src.setReplaceInvalidAcronym(replaceInvalidAcronym);
+        TokenStream tok = new ClassicFilter(src);
+        tok = new LowerCaseFilter(Version.LUCENE_36, tok);
+        tok = new StopFilter(Version.LUCENE_36, tok, stopwords);
+        return new ReusableAnalyzerBase.TokenStreamComponents(src, tok) {
+            @Override
+            protected boolean reset(final Reader reader) throws IOException {
+                src.setMaxTokenLength(maxTokenLength);
+                return super.reset(reader);
+            }
+        };
+    } */
+
+    /*
     @Override
     public TokenStream reusableTokenStream(String fieldName, Reader reader) throws IOException {
         return tokenStream(fieldName, reader);
+    } */
+
+    private static Set<String> getStopWords(Map<Object, Object> analyzerConfiguration) {
+        if (analyzerConfiguration.containsKey(STOPWORDS)) {
+            JSONArray stopwordList = (JSONArray)analyzerConfiguration.get(STOPWORDS);
+            Set<String> stopwords = new HashSet<String>(stopwordList.size());
+            for (Object stopword : stopwordList){
+                if ( !(stopword instanceof String) ) {
+                    throw new IllegalArgumentException("Stopwords aren't Strings");
+                }
+                stopwords.add((String)stopword);
+            }
+            return stopwords;
+        } else {
+            return ImmutableSet.of();
+        }
     }
 
     public static Analyzer buildAnalyzer(Map<Object, Object> configuration) {
         return new IndexEngineAnalyzer(configuration);
     }
-    
+
 }
