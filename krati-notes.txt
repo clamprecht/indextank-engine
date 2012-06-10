@@ -1,0 +1,51 @@
+https://groups.google.com/forum/?hl=en&fromgroups#!topic/krati/ElAZ7-Sno14
+
+From Jingwei:
+
+-------
+The initialCapacity requires initialCapacity * 8 bytes memory.
+
+The WriteBufferSegmentFactory allocates WriteBufferSegment(s) of size
+64MB. Since it uses memory buffer for append operations, at any time,
+there may be up to 2-3 WriteBufferSegment(s) with 64MB memory for
+each. So you looking at 120MB - 180MB memory footprint.
+
+There are several ways for reducing the memory usage.
+
+1. Use other segment factory such ChannelSegmentFactory (write
+throughput decreases as a result)
+2. Make segmentFileSizeMB smaller (say 32)
+
+--------
+
+There are four types of SegmentFactory.
+* MemorySegmentFactory : all segments are in memory.
+* MappedSegmentFactory : all segments are in mmap.
+* ChannelSegmentFactory : all segments are in NIO file channel.
+* WriteBufferSegmentFactory: all segments except the current appending
+segment are in NIO file channel. The current appending segment is in
+memory.
+
+Each SegmentFactory gives distinct performance. We use them
+differently on production depending on the application requirements.
+
+For your question, the WriteBufferSegmentFactory with 32MB segment
+file size seems to be a good option.
+
+Since your write throughput is not high, I think ChannelSegmentFactory
+ with 32MB/64MB is good too.
+
+-------
+
+initialcapacity:
+500k = 4MB RAM
+1M = 8MB RAM
+2M = 16MB RAM
+4M = 32MB RAM
+8M = 64MB RAM
+16M = 128MB RAM
+
+Krati storage config params:
+
+initialCapacity (default 1M?)
+segmentFileSizeMB (default 32MB)
