@@ -19,28 +19,33 @@ package com.flaptor.indextank.index.lsi;
 import java.io.IOException;
 import java.io.Reader;
 
-import org.apache.lucene.analysis.KeywordAnalyzer;
-import org.apache.lucene.analysis.TokenFilter;
-import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.*;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermAttribute;
 import org.apache.lucene.index.Payload;
 
 import com.flaptor.indextank.index.lsi.term.PayloadEncoder;
 
-public class PayloadAnalyzer extends KeywordAnalyzer {
+/**
+ * "Tokenizes" the entire stream as a single token using
+ * Lucene's {@link org.apache.lucene.analysis.KeywordTokenizer}.
+ */
+public final class PayloadAnalyzer extends ReusableAnalyzerBase {
 
-	@Override
+    @Override
+    protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
+        Tokenizer tokenizer = new KeywordTokenizer(reader);
+        TokenFilter filter = new Filter(tokenizer);
+        return new TokenStreamComponents(tokenizer, filter);
+    }
+
+    /*
+    @Override
 	public TokenStream tokenStream(String fieldName, Reader reader) {
-		return new Filter(super.tokenStream(fieldName, reader));
-	}
-	public TokenStream reusabletokenStream(String fieldName, Reader reader) {
-		return new Filter(super.tokenStream(fieldName, reader));
-	}
-	
-	
-	
-	static class Filter extends TokenFilter {
+		return new Filter(delegate.tokenStream(fieldName, reader));
+	} */
+
+    private static final class Filter extends TokenFilter {
 		private TermAttribute termAtt;
 		private PayloadAttribute payAtt;
 	
