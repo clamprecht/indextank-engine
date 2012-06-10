@@ -23,6 +23,7 @@ import java.util.Iterator;
 
 import com.flaptor.indextank.IndexTankTestCase;
 import com.flaptor.util.TestInfo;
+import org.apache.lucene.search.PhraseQuery;
 
 public class IndexEngineParserTest extends IndexTankTestCase {
 
@@ -63,6 +64,29 @@ public class IndexEngineParserTest extends IndexTankTestCase {
         } catch (ParseException e) {
             //OK
         }
+    }
+
+    @TestInfo(testType=UNIT)
+    public void testPhraseQueries() throws Exception {
+        QueryNode qn = parser.parseQuery("\"foo bar\"");
+        org.apache.lucene.search.Query luceneQuery = qn.getLuceneQuery();
+        //System.out.println("luceneQuery: " + luceneQuery);
+        assertTrue("\"foo bar\" should result in a PhraseQuery", luceneQuery instanceof PhraseQuery);
+        PhraseQuery phraseQuery = (PhraseQuery) luceneQuery;
+        assertEquals("\"foo bar\" should have two terms", 2, phraseQuery.getTerms().length);
+        assertEquals("\"foo bar\" first term is \"foo\"", "foo", phraseQuery.getTerms()[0].text());
+        assertEquals("\"foo bar\" second term is \"bar\"", "bar", phraseQuery.getTerms()[1].text());
+
+        // test behavior around automatically generated phrase queries
+        // this changed in Lucene 3.1, but we want the old behavior
+        qn = parser.parseQuery("foo-bar");
+        luceneQuery =  qn.getLuceneQuery();
+        //System.out.println("luceneQuery: " + luceneQuery);
+        assertTrue("foo-bar should result in a PhraseQuery", qn.getLuceneQuery() instanceof PhraseQuery);
+        phraseQuery = (PhraseQuery) luceneQuery;
+        assertEquals("foo-bar should have two terms", 2, phraseQuery.getTerms().length);
+        assertEquals("foo-bar first term is \"foo\"", "foo", phraseQuery.getTerms()[0].text());
+        assertEquals("foo-bar second term is \"bar\"", "bar", phraseQuery.getTerms()[1].text());
     }
 
 	@TestInfo(testType=UNIT)
