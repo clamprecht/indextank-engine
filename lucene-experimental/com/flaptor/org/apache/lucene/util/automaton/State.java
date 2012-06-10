@@ -28,8 +28,8 @@
  */
 
 package com.flaptor.org.apache.lucene.util.automaton;
-import com.flaptor.org.apache.lucene.util.RamUsageEstimator;
-import com.flaptor.org.apache.lucene.util.ArrayUtil2;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.ArrayUtil;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -110,7 +110,7 @@ public class State implements Comparable<State> {
    */
   public void addTransition(Transition t) {
     if (numTransitions == transitionsArray.length) {
-      final Transition[] newArray = new Transition[ArrayUtil2.oversize(1+numTransitions, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+      final Transition[] newArray = new Transition[ArrayUtil.oversize(1+numTransitions, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
       System.arraycopy(transitionsArray, 0, newArray, 0, numTransitions);
       transitionsArray = newArray;
     }
@@ -231,7 +231,7 @@ public class State implements Comparable<State> {
   /** Sorts transitions array in-place. */
   public void sortTransitions(Comparator<Transition> comparator) {
     // mergesort seems to perform better on already sorted arrays:
-    if (numTransitions > 1) ArrayUtil2.mergeSort(transitionsArray, 0, numTransitions, comparator);
+    if (numTransitions > 1) ArrayUtil.mergeSort(transitionsArray, 0, numTransitions, comparator);
   }
   
   /**

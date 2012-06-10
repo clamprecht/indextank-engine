@@ -17,6 +17,8 @@ package com.flaptor.org.apache.lucene.util;
  * limitations under the License.
  */
 
+import org.apache.lucene.util.RamUsageEstimator;
+
 import java.util.Collection;
 import java.util.Comparator;
 

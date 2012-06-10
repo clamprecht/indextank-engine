@@ -38,8 +38,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import com.flaptor.org.apache.lucene.util.RamUsageEstimator;
-import com.flaptor.org.apache.lucene.util.ArrayUtil2;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.ArrayUtil;
 
 /**
  * Finite-state automaton with regular expression operations.
@@ -287,7 +287,7 @@ public class Automaton implements Cloneable {
             worklist.add(t.to);
             t.to.number = upto;
             if (upto == numberedStates.length) {
-              final State[] newArray = new State[ArrayUtil2.oversize(1+upto, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+              final State[] newArray = new State[ArrayUtil.oversize(1+upto, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
               System.arraycopy(numberedStates, 0, newArray, 0, upto);
               numberedStates = newArray;
             }
