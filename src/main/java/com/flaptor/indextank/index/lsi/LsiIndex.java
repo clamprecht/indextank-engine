@@ -29,11 +29,14 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.PerFieldAnalyzerWrapper;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockObtainFailedException;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.util.Version;
 
 import com.flaptor.indextank.index.QueryMatcher;
 import com.flaptor.indextank.index.lsi.term.IndexReaderTermMatcher;
@@ -88,7 +91,7 @@ public class LsiIndex {
         BlockingDeque<QueryMatcher> matcherPool = new LinkedBlockingDeque<QueryMatcher>();
         for (int i=0; i < SEARCHER_POOL_SIZE; i++) {
             try { 
-                IndexSearcher searcher = new IndexSearcher(directory, true); //read-only for better concurrent performance.
+                IndexSearcher searcher = new IndexSearcher(IndexReader.open(directory)); //read-only for better concurrent performance.
                 TermMatcher termMatcher = new IndexReaderTermMatcher(searcher.getIndexReader(), PAYLOAD_TERM);
                 QueryMatcher matcher = new TermBasedQueryMatcher(scorer, termMatcher, this.facetingManager);		
                 searcherPool.addFirst(searcher); //no blocking, throws exception.
@@ -103,7 +106,12 @@ public class LsiIndex {
     }
 
     private void reopenWriter() throws CorruptIndexException, LockObtainFailedException, IOException {
-        indexWriter = new IndexWriter(this.directory, getAnalyzer(), IndexWriter.MaxFieldLength.UNLIMITED);
+        IndexWriterConfig writerConfig = new IndexWriterConfig(Version.LUCENE_36, getAnalyzer());
+        writerConfig.setMaxThreadStates(2);
+        indexWriter = new IndexWriter(this.directory, writerConfig);
+        indexWriter.commit();   // force saving the index to disk upon creation
+        // we should limit maxFieldLength, but it's deprecated and they recommend using LimitTokenCountAnalyzer
+        //indexWriter.setMaxFieldLength(mfl.getLimit());
     }
 
 	private Analyzer getAnalyzer() {
