@@ -16,23 +16,35 @@
 
 package com.flaptor.indextank.query;
 
+import java.io.Reader;
 import java.util.Map;
 
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.cjk.CJKAnalyzer;
 import org.apache.lucene.util.Version;
 
 import com.google.common.collect.Maps;
 
-public class IndexEngineCJKAnalyzer extends CJKAnalyzer {
+public class IndexEngineCJKAnalyzer extends Analyzer {
+    private final CJKAnalyzer delegate;
 
     public IndexEngineCJKAnalyzer(Map<Object, Object> configuration) {
         // Matching version requested for first testing user
-        super(Version.valueOf((String)configuration.get("match_version")));
+        Version matchVersion = Version.LUCENE_36;
+        if (configuration.containsKey("match_version")) {
+            matchVersion = Version.valueOf((String) configuration.get("match_version"));
+        }
+        this.delegate = new CJKAnalyzer(matchVersion);
     }
 
     public IndexEngineCJKAnalyzer() {
         this(Maps.newHashMap());
+    }
+
+    @Override
+    public TokenStream tokenStream(String fieldName, Reader reader) {
+        return delegate.tokenStream(fieldName, reader);
     }
 
     public static Analyzer buildAnalyzer(Map<Object, Object> configuration) {
