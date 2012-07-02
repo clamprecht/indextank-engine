@@ -31,6 +31,8 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.locks.*;
+import java.util.concurrent.locks.Lock;
 
 /**
  * Berkeley DB storage implementation.
@@ -41,6 +43,9 @@ public class BdbStorage extends DocumentBinaryStorage {
     private static final String MAIN_FILE_NAME = "BdbStorage";
     private final Charset UTF8_CHARSET = Charset.forName("UTF-8");
     private final Database database;
+    private final ReadWriteLock rwl = new ReentrantReadWriteLock();
+    private final Lock readLock = rwl.readLock();
+    private final Lock writeLock = rwl.writeLock();
 
     public BdbStorage(File storageDir, int cacheSizeMB, DatabaseConfig config) throws IOException {
         Preconditions.checkArgument(cacheSizeMB >= 1, "cacheSizeMB must be at least 1");
@@ -68,6 +73,7 @@ public class BdbStorage extends DocumentBinaryStorage {
             EnvironmentConfig ec = new EnvironmentConfig();
             ec.setAllowCreate(true);
             ec.setInitializeCDB(true);
+            //ec.setInitializeLocking(true); //????
             ec.setCacheSize(cacheSizeMB * 1024 * 1024);
             ec.setInitializeCache(true);
             ec.setErrorStream(System.err);
@@ -100,10 +106,16 @@ public class BdbStorage extends DocumentBinaryStorage {
     private synchronized void syncToDisk() throws IOException {
         logger.info("Syncing to disk.");
         try {
-            database.sync();
-            database.close();
+            readLock.lock();
+            try {
+                database.sync();
+                database.close();
+            } finally {
+                readLock.unlock();
+            }
             logger.info("Sync to disk completed.");
         } catch (DatabaseException e) {
+            logger.error("DatabaseException in syncToDisk()id ", e);
             throw new IOException(e);
         }
     }
@@ -113,7 +125,13 @@ public class BdbStorage extends DocumentBinaryStorage {
         try {
             DatabaseEntry key = new DatabaseEntry(docId.getBytes(UTF8_CHARSET));
             DatabaseEntry readValue = new DatabaseEntry();
-            OperationStatus status = database.get(null, key, readValue, LockMode.DEFAULT);
+            OperationStatus status;
+            readLock.lock();
+            try {
+                status = database.get(null, key, readValue, LockMode.DEFAULT);
+            } finally {
+                readLock.unlock();
+            }
             if (status == OperationStatus.SUCCESS) {
                 return readValue.getData();
             }
@@ -122,6 +140,7 @@ public class BdbStorage extends DocumentBinaryStorage {
             }
             return null;
         } catch (DatabaseException e) {
+            logger.error("DatabaseException in getBinaryDoc() for docid " + docId, e);
             throw new RuntimeException(e);
         }
     }
@@ -131,11 +150,18 @@ public class BdbStorage extends DocumentBinaryStorage {
         try {
             DatabaseEntry key = new DatabaseEntry(docId.getBytes(UTF8_CHARSET));
             DatabaseEntry value = new DatabaseEntry(bytes);
-            OperationStatus status = database.put(null, key, value);
+            OperationStatus status;
+            writeLock.lock();
+            try {
+                status = database.put(null, key, value);
+            } finally {
+                writeLock.unlock();
+            }
             if (status != OperationStatus.SUCCESS) {
                 logger.error("Error saving doc to BDB, status: " + status);
             }
         } catch (DatabaseException e) {
+            logger.error("DatabaseException in saveBinaryDoc() for docid " + docId, e);
             throw new RuntimeException(e);
         }
     }
@@ -144,11 +170,18 @@ public class BdbStorage extends DocumentBinaryStorage {
     public void deleteBinaryDoc(String docId) {
         try {
             DatabaseEntry key = new DatabaseEntry(docId.getBytes(UTF8_CHARSET));
-            OperationStatus status = database.delete(null, key);
+            OperationStatus status;
+            writeLock.lock();
+            try {
+                status = database.delete(null, key);
+            } finally {
+                writeLock.unlock();
+            }
             if (status != OperationStatus.SUCCESS && status != OperationStatus.NOTFOUND) {
                 logger.error("Error deleting doc from BDB, status: " + status);
             }
         } catch (DatabaseException e) {
+            logger.error("DatabaseException in deleteBinaryDoc() for docid " + docId, e);
             throw new RuntimeException(e);
         }
     }
@@ -161,7 +194,13 @@ public class BdbStorage extends DocumentBinaryStorage {
             stats.putAll(getLengthStats());
             StatsConfig statsConfig = new StatsConfig();
             statsConfig.setFast(true);
-            DatabaseStats bdbStats = database.getStats(null, statsConfig);
+            DatabaseStats bdbStats;
+            readLock.lock();
+            try {
+                bdbStats = database.getStats(null, statsConfig);
+            } finally {
+                readLock.unlock();
+            }
             if (bdbStats != null) {
                 stats.put("bdb_stats", bdbStats.toString());
             }
