@@ -73,7 +73,8 @@ public class BdbStorage extends DocumentBinaryStorage {
             // Setup BDB environment using Concurrent Data Store
             EnvironmentConfig ec = new EnvironmentConfig();
             ec.setAllowCreate(true);
-            ec.setInitializeCDB(true);
+            logger.info("Using non-concurrent datastore");
+            //ec.setInitializeCDB(true);
             ec.setCacheSize(cacheSizeMB * 1024 * 1024);
             ec.setInitializeCache(true);
             ec.setErrorStream(System.err);
