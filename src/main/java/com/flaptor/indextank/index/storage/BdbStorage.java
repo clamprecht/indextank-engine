@@ -46,6 +46,7 @@ public class BdbStorage extends DocumentBinaryStorage {
     private final ReadWriteLock rwl = new ReentrantReadWriteLock();
     private final Lock readLock = rwl.readLock();
     private final Lock writeLock = rwl.writeLock();
+    private final Environment env;
 
     public BdbStorage(File storageDir, int cacheSizeMB, DatabaseConfig config) throws IOException {
         Preconditions.checkArgument(cacheSizeMB >= 1, "cacheSizeMB must be at least 1");
@@ -73,12 +74,11 @@ public class BdbStorage extends DocumentBinaryStorage {
             EnvironmentConfig ec = new EnvironmentConfig();
             ec.setAllowCreate(true);
             ec.setInitializeCDB(true);
-            //ec.setInitializeLocking(true); //????
             ec.setCacheSize(cacheSizeMB * 1024 * 1024);
             ec.setInitializeCache(true);
             ec.setErrorStream(System.err);
             ec.setErrorPrefix("BDBError");
-            Environment env = new Environment(storageDir, ec);
+            env = new Environment(storageDir, ec);
 
             config.setAllowCreate(true);
             config.setCacheSize(cacheSizeMB * 1024 * 1024);
@@ -104,14 +104,15 @@ public class BdbStorage extends DocumentBinaryStorage {
      * Blocking method.
      */
     private synchronized void syncToDisk() throws IOException {
-        logger.info("Syncing to disk.");
+        logger.info("Syncing to disk and closing BDB environment");
         try {
-            readLock.lock();
+            writeLock.lock();
             try {
-                database.sync();
+                //database.sync();
                 database.close();
+                env.close();
             } finally {
-                readLock.unlock();
+                writeLock.unlock();
             }
             logger.info("Sync to disk completed.");
         } catch (DatabaseException e) {
