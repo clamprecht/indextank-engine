@@ -225,6 +225,11 @@ import java.lang.reflect.Constructor;
         b.invokeStatic("com.flaptor.indextank.index.scorer.ScoreMath", "bit", TypeDesc.DOUBLE, params);
     }
 
+    private void emit_rand() {
+        params = new TypeDesc[] { };
+        b.invokeStatic("com.flaptor.indextank.index.scorer.ScoreMath", "rand", TypeDesc.DOUBLE, params);
+    }
+
     private void emit_cond(String comp) {
         Label lbl1 = b.createLabel();
         Label lbl2 = b.createLabel();
@@ -284,6 +289,7 @@ factor
 	|	'km(' expr ',' expr ',' expr ',' expr ')' { emit_km(); }
 	|	'miles(' expr ',' expr ',' expr ',' expr ')' { emit_miles(); }
 	|	'bit(' expr ',' expr ')' { emit_bit(); }
+	|	'rand()' { emit_rand(); }
 	|	MINUS factor { emit_neg(); }
 	;
 cond
