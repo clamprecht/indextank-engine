@@ -104,4 +104,7 @@ public class ScoreMath {
         return (((int)val1 & (1 << (int)val2)) > 0) ? 1 : 0;
     }
 
+    public static double rand() {
+        return Math.random();
+    }
 }
