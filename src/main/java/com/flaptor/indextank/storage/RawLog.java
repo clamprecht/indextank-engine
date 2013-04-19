@@ -40,7 +40,7 @@ public class RawLog {
     private LogRoot root;
 
     private final int segmentSize;
-    private int records;
+    private long records;
     private int segmentRecords;
 
     private long lastTime;
