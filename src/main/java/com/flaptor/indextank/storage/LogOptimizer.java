@@ -203,7 +203,7 @@ public class LogOptimizer implements Runnable {
         }
         int totalCount = optimizedCount;
 
-        final int MAX_OPTIMIZE_SEGMENTS = 600;
+        final int MAX_OPTIMIZE_SEGMENTS = 40;
         for (Segment segment : log.getSortedSegments()) {
             if (segment.timestamp > lastTimestamp) {
                 segments.add(segment);
