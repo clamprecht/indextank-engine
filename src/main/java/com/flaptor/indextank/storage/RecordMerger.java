@@ -114,7 +114,7 @@ public class RecordMerger {
                         for (PeekingIterator<LogRecord> it : cursors) {
                             if (it.hasNext()) {
                                 LogRecord peek = it.peek();
-                                if (peek.get_docid().equals(docid)) {
+                                if (peek.get_docid() != null && peek.get_docid().equals(docid)) {
                                     it.next();
                                     if (merged == null) {
                                         merged = peek;
