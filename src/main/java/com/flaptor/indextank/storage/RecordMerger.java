@@ -95,6 +95,15 @@ public class RecordMerger {
                     for (PeekingIterator<LogRecord> it : cursors) {
                         if (it.hasNext()) {
                             LogRecord peek = it.peek();
+                            // either peek or peek.get_docid() is null, causing NPE
+                            if (peek == null) {
+                                System.out.println("peek is null, skipping");
+                                continue;
+                            }
+                            if (peek.get_docid() == null) {
+                                System.out.println("peek.get_docid() is null, skipping");
+                                continue;
+                            }
                             if (docid == null || peek.get_docid().compareTo(docid) < 0) {
                                 docid = peek.get_docid();
                             }
