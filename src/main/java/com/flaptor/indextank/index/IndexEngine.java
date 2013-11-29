@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.flaptor.indextank.*;
 import com.flaptor.indextank.index.storage.BdbStorage;
 import com.flaptor.indextank.index.storage.KratiStorage;
 import com.google.common.collect.ImmutableMap;
@@ -38,10 +39,6 @@ import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
 import org.json.simple.JSONValue;
 
-import com.flaptor.indextank.BoostingIndexer;
-import com.flaptor.indextank.DocumentStoringIndexer;
-import com.flaptor.indextank.IndexRecoverer;
-import com.flaptor.indextank.LogIndexRecoverer;
 import com.flaptor.indextank.blender.Blender;
 import com.flaptor.indextank.dealer.Dealer;
 import com.flaptor.indextank.index.lsi.LargeScaleIndex;
@@ -716,6 +713,15 @@ public class IndexEngine {
             	ie.setIndexer(indexer);
                 searcher = new SnippetSearcher(searcher, storage, ie.getParser());
             }
+
+            /*
+            boolean limitIndexing = true;
+            if (limitIndexing) {
+                int maxIndexingQueue = 20;
+                indexer = new TrafficLimitingIndexer(indexer, maxIndexingQueue);
+                ie.setIndexer(indexer);
+            }
+            */
 
             if (line.hasOption("didyoumean")) {
                 if (suggest != SuggestValues.DOCUMENTS) {
