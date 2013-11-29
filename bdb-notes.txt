@@ -1,0 +1,21 @@
+To add berkeleydb-native to local maven repo:
+See http://maven.apache.org/general.html#importing-jars
+
+mvn install:install-file
+  -Dfile=<path-to-file>
+  -DgroupId=<group-id>
+  -DartifactId=<artifact-id>
+  -Dversion=<version>
+  -Dpackaging=<packaging>
+  -DgeneratePom=true
+
+Where: <path-to-file>  the path to the file to load
+       <group-id>      the group that the file should be registered under
+       <artifact-id>   the artifact name for the file
+       <version>       the version of the file
+       <packaging>     the packaging of the file e.g. jar
+
+# assuming db.jar is in ./lib/db.jar
+$ mvn install:install-file -Dfile=lib/db.jar -DgroupId=berkeleydb -DartifactId=bdb-native \
+  -Dversion=5.3.15 -Dpackaging=jar -DgeneratePom=true
+
