@@ -237,7 +237,8 @@ public class DynamicDataManager implements BoostsManager {
 
 		for (Integer index : boosts.keySet()) {
 			if (index >= numberOfBoosts || index < 0) {
-				throw new IllegalArgumentException("Invalid boost index (" + index + " for a Scorer with a maximum of " + numberOfBoosts + " boosts)");
+                // todo - improve error message, match the one in restapi _validate_variables().
+				throw new IllegalArgumentException("Invalid variable index (" + index + " for a Scorer with a maximum of " + numberOfBoosts + " variables)");
 			}
 		}
 		DynamicData data = getOrCreateData(documentId);
