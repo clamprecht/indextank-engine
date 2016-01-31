@@ -236,14 +236,18 @@ public class DynamicDataManager implements BoostsManager {
 		Preconditions.checkNotNull(documentId);
 
 		for (Integer index : boosts.keySet()) {
-			if (index >= numberOfBoosts || index < 0) {
-                // todo - improve error message, match the one in restapi _validate_variables().
-				throw new IllegalArgumentException("Invalid variable index (" + index + " for a Scorer with a maximum of " + numberOfBoosts + " variables)");
+			if (index < 0 || index > 50) {
+				logger.warn("Ignoring invalid variable index ["+index+"] for docId: " + documentId);
 			}
 		}
 		DynamicData data = getOrCreateData(documentId);
 		for (Entry<Integer, Float> entry : boosts.entrySet()) {
-			data.setBoost(entry.getKey(), entry.getValue());
+			int index = entry.getKey();
+			if (index >= 0 && index < numberOfBoosts) {
+				data.setBoost(entry.getKey(), entry.getValue());
+			} else {
+				logger.error("Ignoring out of bounds variable index ["+index+"] for docId: " + documentId);
+			}
 		}
 		if (timestamp != null) {
             data.setTimestamp(timestamp);
