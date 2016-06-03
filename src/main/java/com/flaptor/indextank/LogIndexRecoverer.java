@@ -24,6 +24,8 @@ import com.flaptor.indextank.rpc.LogRecord;
 import com.flaptor.indextank.storage.LogStorageIndexReader;
 import com.flaptor.util.Execute;
 
+import java.util.Map;
+
 public class LogIndexRecoverer implements Runnable {
     private static final Logger logger = Logger.getLogger(Execute.whoAmI());
     
@@ -69,7 +71,19 @@ public class LogIndexRecoverer implements Runnable {
                         logger.warn("Document " + record.get_docid() + " had an invalid timestamp '" + record.get_fields().get("timestamp") + "', skipping it.");
                         continue;
                     }
-                    Document document = new Document(record.get_fields());
+                    // We need to make sure the fields aren't empty, to avoid
+                    // java.lang.IllegalArgumentException: name and value cannot both be empty
+                    // see http://svn.apache.org/repos/asf/lucene/java/tags/lucene_2_2_0/src/java/org/apache/lucene/document/Field.java
+                    Map<String, String> fields = record.get_fields();
+                    if (fields == null) {
+                        logger.warn("Document " + record.get_docid() + " has fields == null, skipping");
+                        continue;
+                    }
+                    if (containsEmptyField(fields)) {
+                        logger.warn("Document " + record.get_docid() + " has empty field key or value, skipping");
+                        continue;
+                    }
+                    Document document = new Document(fields);
                     indexer.add(record.get_docid(), document, timestamp, record.get_variables());
                 } else {
                     indexer.updateBoosts(record.get_docid(), record.get_variables());
@@ -89,5 +103,15 @@ public class LogIndexRecoverer implements Runnable {
         } catch (Exception ex) {
             throw new RuntimeException("Something BAD happened: ",ex);
         }
+    }
+
+    private boolean containsEmptyField(Map<String, String> fields) {
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null)
+                return true;
+            if (entry.getKey().length() == 0 && entry.getValue().length() == 0)
+                return true;
+        }
+        return false;
     }
 }
